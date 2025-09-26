@@ -513,7 +513,8 @@ void ExampleWindow::on_bind_list_item(const Glib::RefPtr<Gtk::ListItem>& list_it
    /// image->set(col->m_icon);
    // image->set_icon_size(Gtk::IconSize::LARGE);
       image->set_pixel_size(120);
-    image->set(col->m_icon);
+   /// image->set(col->m_icon);
+	    image->set_from_resource(col->m_icon); 
     //    image->set("./toolbar/af.svg");
   auto vbox = dynamic_cast<Gtk::Box*>(image->get_next_sibling());
   if (!vbox)
