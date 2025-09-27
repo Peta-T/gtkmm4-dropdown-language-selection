@@ -94,7 +94,7 @@ void LanguageSelector::on_bind_selected_item(const Glib::RefPtr<Gtk::ListItem>& 
     if (!box) return;
     auto image = dynamic_cast<Gtk::Image*>(box->get_first_child());
     if (!image) return;
-    image->set(col->m_icon);
+    image->set_from_resource(col->m_icon);
     image->set_pixel_size(150);
 
     auto label = dynamic_cast<Gtk::Label*>(image->get_next_sibling());
