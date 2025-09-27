@@ -1,3 +1,7 @@
+// there are used svg images of flags with names by ISO 3166-1-alpha-2 code from this source: 
+// https://github.com/lipis/flag-icons/tree/main/flags/4x3
+// many thanks to autor
+
 #include "languageselector.h"
 #include <iostream>
 
