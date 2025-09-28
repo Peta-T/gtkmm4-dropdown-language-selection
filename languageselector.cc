@@ -1,4 +1,4 @@
-// there are used svg images of flags with names by ISO 3166-1-alpha-2 code from this source: 
+// there are used svg images of flags with names by ISO 3166-1-alpha-2 code from this source:
 // https://github.com/lipis/flag-icons/tree/main/flags/4x3 included into resources.c file
 // many thanks to autor
 
@@ -8,9 +8,8 @@
 using namespace LanguageSelectorInternal;
 
 LanguageSelector::LanguageSelector(const std::string& initial_locale)
-    : Gtk::Box(Gtk::Orientation::HORIZONTAL) // Dědíme z Gtk::Box pro snadné vložení
+    : Gtk::Box(Gtk::Orientation::HORIZONTAL)
 {
-    // Nastavení DropDown továren a modelu
     auto factory = Gtk::SignalListItemFactory::create();
     factory->signal_setup().connect(
         sigc::mem_fun(*this, &LanguageSelector::on_setup_selected_item));
@@ -27,11 +26,9 @@ LanguageSelector::LanguageSelector(const std::string& initial_locale)
         sigc::mem_fun(*this, &LanguageSelector::on_unbind_list_item));
     m_DropDown.set_list_factory(factory);
 
-    // Vytvoření a naplnění modelu daty
     create_model();
     m_DropDown.set_model(m_ListStore);
 
-    // Nastavení počáteční hodnoty
     int initial_index = 0;
     for (size_t i = 0; i < m_ListStore->get_n_items(); ++i)
     {
@@ -43,11 +40,9 @@ LanguageSelector::LanguageSelector(const std::string& initial_locale)
     }
     m_DropDown.set_selected(initial_index);
 
-    // Připojení handleru signálu pro DropDown změnu
     m_DropDown.property_selected().signal_changed().connect(
         sigc::mem_fun(*this, &LanguageSelector::on_dropdown_changed));
 
-    // Přidání DropDown jako jediné dceřiné komponenty do Gtk::Box
     append(m_DropDown);
 }
 
@@ -55,7 +50,7 @@ std::string LanguageSelector::get_selected_locale() const
 {
     const auto selected = m_DropDown.get_selected();
     if (selected >= m_ListStore->get_n_items())
-        return ""; // Nebylo vybráno nic platného
+        return "";
 
     return m_ListStore->get_item(selected)->m_description.raw();
 }
@@ -70,7 +65,6 @@ void LanguageSelector::on_dropdown_changed()
     const auto selected_locale = get_selected_locale();
     std::cout << "LanguageSelector: New locale selected: " << selected_locale << std::endl;
 
-    // Vyslání signálu s novou hodnotou
     m_signal_language_changed.emit(selected_locale);
 }
 
@@ -80,7 +74,6 @@ void LanguageSelector::liststore_add_item(const Glib::ustring& title,
     m_ListStore->append(ModelColumns::create(title, icon, description));
 }
 
-// Ostatní metody (on_setup/on_bind) jsou převzaty z původního kódu
 void LanguageSelector::on_setup_selected_item(const Glib::RefPtr<Gtk::ListItem>& list_item)
 {
     auto box = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::HORIZONTAL, 10);
@@ -176,11 +169,9 @@ void LanguageSelector::on_selected_item_changed(const Glib::RefPtr<Gtk::ListItem
     checkmark->set_visible(m_DropDown.get_selected_item() == list_item->get_item());
 }
 
-// Zde by mělo být umístěno naplnění dat
 void LanguageSelector::create_model()
 {
     m_ListStore = LangListStore::create();
-    // Vložení seznamu jazyků
     liststore_add_item("\x43 / C locale", "/toolbar/zz.svg", "C.UTF-8");
     liststore_add_item("\x51\x61\x66\x61\x72 / Afar, Djibouti", "/toolbar/dj.svg", "aa_DJ.UTF-8");
     liststore_add_item("\x41\x66\x72\x69\x6b\x61\x61\x6e\x73 / Afrikaans, South Africa", "/toolbar/za.svg", "af_ZA.UTF-8");
