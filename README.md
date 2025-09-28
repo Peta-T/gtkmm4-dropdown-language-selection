@@ -1,2 +1,4 @@
 # gtkmm4-dropdown-language-selection
-.. image:: Screenshot.png
+
+![Screenschot](Screenshot.png)
+
