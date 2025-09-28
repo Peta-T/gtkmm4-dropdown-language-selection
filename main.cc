@@ -7,7 +7,6 @@
 #include <iostream>
 #include "languageselector.h"
 
-// Třída hlavního okna s použitím LanguageSelectoru
 class MyWindow : public Gtk::Window
 {
 public:
@@ -16,14 +15,11 @@ public:
         set_title("Language Selector Example");
         set_default_size(400, 200);
 
-        // 1. Vytvoření instance LanguageSelectoru.
         m_lang_selector = Gtk::make_managed<LanguageSelector>("cs_CZ.UTF-8");
 
-        // 2. Připojení na signál, který vrátí vybraný locale řetězec.
         m_lang_selector->signal_language_changed().connect(
             sigc::mem_fun(*this, &MyWindow::on_language_changed));
 
-        // Nastavení GUI
         m_label = Gtk::make_managed<Gtk::Label>("Current Locale: " + m_lang_selector->get_selected_locale());
         m_label->set_margin_top(15);
         m_label->set_margin_bottom(15);
@@ -42,12 +38,8 @@ public:
 protected:
     void on_language_changed(const std::string& new_locale)
     {
-        // Obsluha signálu z LanguageSelectoru
         std::cout << "MAIN PROGRAM: New locale received: " << new_locale << std::endl;
         m_label->set_text("Current Locale: " + new_locale);
-
-        // Zde můžete provést logiku programu pro změnu jazyka
-        // Např. setlocale(LC_ALL, new_locale.c_str());
     }
 
 private:
@@ -59,10 +51,6 @@ private:
 int main(int argc, char* argv[])
 {
     auto app = Gtk::Application::create("org.gtkmm.languageselector");
-
-    // Potřebné pro načítání SVG obrázků z GTK resources
-    // Pokud použijete resources.c, je potřeba zaregistrovat resource bundle
-    // g_resources_register(GET_RESOURCE(resources));
 
     return app->make_window_and_run<MyWindow>(argc, argv);
 }
