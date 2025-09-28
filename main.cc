@@ -1,5 +1,6 @@
 //build: g++ -std=c++17 main.cc languageselector.cc resources.c -o app $(pkg-config --cflags --libs gtkmm-4.0)
 // build resource: glib-compile-resources --generate-source ./resource.xml
+// flag images from: https://github.com/lipis/flag-icons/tree/main/flags/4x3
 #include <gtkmm.h>
 #include <iostream>
 #include "languageselector.h"
