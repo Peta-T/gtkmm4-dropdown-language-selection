@@ -1,5 +1,5 @@
 // build app: g++ -std=c++17 main.cc languageselector.cc ./images/resources.c -o app $(pkg-config --cflags --libs gtkmm-4.0)
-// if you need chage resource images:
+// if you will need chage resource images:
 // download flag images from: https://github.com/lipis/flag-icons/tree/main/flags/4x3
 // and https://upload.wikimedia.org/wikipedia/commons/f/ff/Flag_of_Serbia.svg  to ./images folder
 // build resource: glib-compile-resources --generate-source ./resources.xml
