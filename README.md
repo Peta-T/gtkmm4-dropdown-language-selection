@@ -49,7 +49,7 @@ Before continuing you may change to another directory. It easiest to type cd fol
 6.) Build it - type on command line:
 ------------------------------------
 
-   g++ -std=c++20 main.cc \`pkg-config --cflags --libs gtkmm-4.0 \` -o app -g
+   g++ -std=c++17 main.cc languageselector.cc ./images/resources.c -o app $(pkg-config --cflags --libs gtkmm-4.0)
 
 7.) Run app - type on command line:
 -----------------------------------
