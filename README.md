@@ -40,8 +40,8 @@ When prompted, just hit return. Sit back and wait for it to install what’s alm
 
 Before continuing you may change to another directory. It easiest to type cd followed by a space and drop the folder you want to change to on the window.
 
-5.) Clone gtkmm4-gesture-ai-sample-test by type/paste on commandline:
----------------------------------------------------------------------
+5.) Clone gtkmm4-dropdown-language-selection by type/paste on commandline:
+--------------------------------------------------------------------------
 
    git clone https://github.com/Peta-T/gtkmm4-dropdown-language-selection \
    cd gtkmm4-dropdown-language-selection
