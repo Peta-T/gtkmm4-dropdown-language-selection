@@ -203,7 +203,7 @@ void LanguageSelector::create_model()
     liststore_add_item("\x43\x61\x74\x61\x6c\xe0 / Catalan, Spain", "/images/es.svg", "ca_ES.UTF-8");
     liststore_add_item("\x43\x61\x74\x61\x6c\xe0 / Catalan, France", "/images/fr.svg", "ca_FR.UTF-8");
     liststore_add_item("\x43\x61\x74\x61\x6c\xe0 / Catalan, Italy", "/images/it.svg", "ca_IT.UTF-8");
-    liststore_add_item("\x43\x65\xc5\xa1\x74\x69\x6e\x61 / Czech, Czech Republic", "/images/cz.svg", "cs_CZ.UTF-8");
+    liststore_add_item("\xc4\x8c\x65\xc5\xa1\x74\x69\x6e\x61 / Czech, Czech Republic", "/images/cz.svg", "cs_CZ.UTF-8");
     liststore_add_item("\x43\x79\x6d\x72\x61\x65\x67 / Welsh, United Kingdom", "/images/gb.svg", "cy_GB.UTF-8");
     liststore_add_item("\x44\x61\x6e\x73\x6b / Danish, Denmark", "/images/dk.svg", "da_DK.UTF-8");
     liststore_add_item("\x44\x65\x75\x74\x73\x63\x68 / German, Austria", "/images/at.svg", "de_AT.UTF-8");
