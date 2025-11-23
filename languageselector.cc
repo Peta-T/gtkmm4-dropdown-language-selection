@@ -55,6 +55,20 @@ std::string LanguageSelector::get_selected_locale() const
     return m_ListStore->get_item(selected)->m_description.raw();
 }
 
+void LanguageSelector::set_selected_locale(const std::string& locale)
+{
+    // Projdeme seznam a najdeme položku s odpovídajícím kódem
+    for (guint i = 0; i < m_ListStore->get_n_items(); ++i)
+    {
+        auto item = m_ListStore->get_item(i);
+        if (item->m_description == locale)
+        {
+            m_DropDown.set_selected(i);
+            return;
+        }
+    }
+}
+
 LanguageSelector::type_signal_language_changed LanguageSelector::signal_language_changed() const
 {
     return m_signal_language_changed;
