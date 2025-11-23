@@ -1,69 +1,128 @@
-// there are used svg images of flags with names by ISO 3166-1-alpha-2 code from this source:
-// https://github.com/lipis/flag-icons/tree/main/flags/4x3 included into resources.c file
-// many thanks to autor
-
 #include "languageselector.h"
 #include <iostream>
 
 using namespace LanguageSelectorInternal;
 
+// --- DESTRUCTOR ---
+LanguageSelector::~LanguageSelector()
+{
+    m_Popover.unparent();
+}
+
+// --- CONSTRUCTOR ---
 LanguageSelector::LanguageSelector(const std::string& initial_locale)
     : Gtk::Box(Gtk::Orientation::HORIZONTAL)
 {
-    auto factory = Gtk::SignalListItemFactory::create();
-    factory->signal_setup().connect(
-        sigc::mem_fun(*this, &LanguageSelector::on_setup_selected_item));
-    factory->signal_bind().connect(
-        sigc::mem_fun(*this, &LanguageSelector::on_bind_selected_item));
-    m_DropDown.set_factory(factory);
+    // 1. Model
+    create_model();
 
-    factory = Gtk::SignalListItemFactory::create();
+    m_SelectionModel = Gtk::SingleSelection::create(m_ListStore);
+    m_SelectionModel->set_autoselect(false);
+    m_SelectionModel->set_can_unselect(false);
+
+    // 2. ListView
+    auto factory = Gtk::SignalListItemFactory::create();
     factory->signal_setup().connect(
         sigc::mem_fun(*this, &LanguageSelector::on_setup_list_item));
     factory->signal_bind().connect(
         sigc::mem_fun(*this, &LanguageSelector::on_bind_list_item));
     factory->signal_unbind().connect(
         sigc::mem_fun(*this, &LanguageSelector::on_unbind_list_item));
-    m_DropDown.set_list_factory(factory);
 
-    create_model();
-    m_DropDown.set_model(m_ListStore);
+    m_ListView.set_model(m_SelectionModel);
+    m_ListView.set_factory(factory);
+    m_ListView.set_single_click_activate(true);
 
-    int initial_index = 0;
-    for (size_t i = 0; i < m_ListStore->get_n_items(); ++i)
-    {
-        if (m_ListStore->get_item(i)->m_description == initial_locale)
-        {
-            initial_index = i;
-            break;
+    // --- KEY CHANGE: ON-CLICK ACTION ---
+    m_ListView.signal_activate().connect([this](guint position){
+        // 1. Get the item that was clicked
+        auto item = m_ListStore->get_item(position);
+
+        // 2. Update the "confirmed" locale
+        m_ConfirmedLocale = item->m_description;
+
+        // 3. Notify all rows: "Refresh checkmarks!"
+        m_signal_refresh_ui.emit();
+
+        // 4. Close the window and update the button content
+        update_button_content(item);
+        m_Popover.popdown();
+
+        // 5. Emit the signal outside the component
+        std::cout << "LanguageSelector: New locale confirmed: " << m_ConfirmedLocale << std::endl;
+        m_signal_language_changed.emit(m_ConfirmedLocale);
+    });
+
+    // 3. Popover
+    m_ScrolledWindow.set_child(m_ListView);
+    m_ScrolledWindow.set_policy(Gtk::PolicyType::NEVER, Gtk::PolicyType::AUTOMATIC);
+    m_ScrolledWindow.set_min_content_width(310);
+    m_ScrolledWindow.set_min_content_height(300);
+    m_ScrolledWindow.set_max_content_height(500);
+
+    m_Popover.set_child(m_ScrolledWindow);
+    m_Popover.set_parent(m_Button);
+    m_Popover.set_autohide(true);
+
+    // 4. Button
+    auto buttonBox = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::HORIZONTAL, 10);
+    m_ButtonImage.set_pixel_size(24);
+    m_ButtonLabel.set_xalign(0.0);
+    m_ButtonLabel.set_hexpand(true);
+    m_ButtonLabel.set_ellipsize(Pango::EllipsizeMode::END);
+
+    auto arrow = Gtk::make_managed<Gtk::Image>();
+    arrow->set_from_icon_name("go-down-symbolic");
+
+    buttonBox->append(m_ButtonImage);
+    buttonBox->append(m_ButtonLabel);
+    buttonBox->append(*arrow);
+    m_Button.set_child(*buttonBox);
+    m_Button.set_size_request(400, -1);
+
+    m_Button.signal_clicked().connect([this]() {
+        m_Popover.popup();
+
+        // Synchronize the blue highlight with the current checkmark
+        // (Ensures the list opens at the correct scroll position)
+        // Find the index of the current language
+        for (guint i = 0; i < m_ListStore->get_n_items(); ++i) {
+            if (m_ListStore->get_item(i)->m_description == m_ConfirmedLocale) {
+                m_SelectionModel->set_selected(i); // Sets blue background (focus)
+
+                // Scroll to that position
+                Glib::signal_idle().connect_once([this, i]() {
+                    m_ListView.scroll_to(i, Gtk::ListScrollFlags::FOCUS | Gtk::ListScrollFlags::SELECT);
+                });
+                break;
+            }
         }
-    }
-    m_DropDown.set_selected(initial_index);
+    });
 
-    m_DropDown.property_selected().signal_changed().connect(
-        sigc::mem_fun(*this, &LanguageSelector::on_dropdown_changed));
+    append(m_Button);
 
-    append(m_DropDown);
+    // 5. Initialization
+    set_selected_locale(initial_locale);
 }
 
 std::string LanguageSelector::get_selected_locale() const
 {
-    const auto selected = m_DropDown.get_selected();
-    if (selected >= m_ListStore->get_n_items())
-        return "";
-
-    return m_ListStore->get_item(selected)->m_description.raw();
+    return m_ConfirmedLocale;
 }
 
 void LanguageSelector::set_selected_locale(const std::string& locale)
 {
-    // Projdeme seznam a najdeme položku s odpovídajícím kódem
+    m_ConfirmedLocale = locale;
+
+    // Find the item to update the button
     for (guint i = 0; i < m_ListStore->get_n_items(); ++i)
     {
         auto item = m_ListStore->get_item(i);
         if (item->m_description == locale)
         {
-            m_DropDown.set_selected(i);
+            update_button_content(item);
+            // Redraw checkmarks (in case the window is open)
+            m_signal_refresh_ui.emit();
             return;
         }
     }
@@ -74,12 +133,10 @@ LanguageSelector::type_signal_language_changed LanguageSelector::signal_language
     return m_signal_language_changed;
 }
 
-void LanguageSelector::on_dropdown_changed()
+void LanguageSelector::update_button_content(const Glib::RefPtr<ModelColumns>& col)
 {
-    const auto selected_locale = get_selected_locale();
-    std::cout << "LanguageSelector: New locale selected: " << selected_locale << std::endl;
-
-    m_signal_language_changed.emit(selected_locale);
+    m_ButtonLabel.set_text(col->m_title);
+    m_ButtonImage.set_from_resource(col->m_icon);
 }
 
 void LanguageSelector::liststore_add_item(const Glib::ustring& title,
@@ -88,49 +145,32 @@ void LanguageSelector::liststore_add_item(const Glib::ustring& title,
     m_ListStore->append(ModelColumns::create(title, icon, description));
 }
 
-void LanguageSelector::on_setup_selected_item(const Glib::RefPtr<Gtk::ListItem>& list_item)
-{
-    auto box = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::HORIZONTAL, 10);
-    box->append(*Gtk::make_managed<Gtk::Image>());
-    box->set_baseline_position(Gtk::BaselinePosition::CENTER);
-    box->append(*Gtk::make_managed<Gtk::Label>());
-    list_item->set_child(*box);
-}
-
-void LanguageSelector::on_bind_selected_item(const Glib::RefPtr<Gtk::ListItem>& list_item)
-{
-    auto col = std::dynamic_pointer_cast<ModelColumns>(list_item->get_item());
-    if (!col) return;
-    auto box = dynamic_cast<Gtk::Box*>(list_item->get_child());
-    if (!box) return;
-    auto image = dynamic_cast<Gtk::Image*>(box->get_first_child());
-    if (!image) return;
-    image->set_from_resource(col->m_icon);
-    image->set_pixel_size(150);
-
-    auto label = dynamic_cast<Gtk::Label*>(image->get_next_sibling());
-    if (!label) return;
-    label->set_text(col->m_title);
-}
+// --- FACTORY METHODS ---
 
 void LanguageSelector::on_setup_list_item(const Glib::RefPtr<Gtk::ListItem>& list_item)
 {
     auto hbox = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::HORIZONTAL, 10);
-    auto vbox = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::VERTICAL, 2);
 
-    hbox->append(*Gtk::make_managed<Gtk::Image>());
+    auto image = Gtk::make_managed<Gtk::Image>();
+    image->set_pixel_size(48);
+    hbox->append(*image);
+
+    auto vbox = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::VERTICAL, 2);
+    vbox->set_valign(Gtk::Align::CENTER);
     hbox->append(*vbox);
+
     auto title = Gtk::make_managed<Gtk::Label>();
     title->set_xalign(0.0);
-    vbox->set_baseline_position(Gtk::BaselinePosition::CENTER);
+    title->add_css_class("heading");
     vbox->append(*title);
+
     auto description = Gtk::make_managed<Gtk::Label>();
     description->set_xalign(0.0);
     description->add_css_class("dim-label");
     vbox->append(*description);
+
     auto checkmark = Gtk::make_managed<Gtk::Image>();
     checkmark->set_from_icon_name("object-select-symbolic");
-
     checkmark->set_visible(false);
     hbox->append(*checkmark);
 
@@ -143,46 +183,51 @@ void LanguageSelector::on_bind_list_item(const Glib::RefPtr<Gtk::ListItem>& list
     if (!col) return;
     auto hbox = dynamic_cast<Gtk::Box*>(list_item->get_child());
     if (!hbox) return;
+
+    // 1. Content
     auto image = dynamic_cast<Gtk::Image*>(hbox->get_first_child());
-    if (!image) return;
-    image->set_pixel_size(120);
-    image->set_from_resource(col->m_icon);
+    if (image) image->set_from_resource(col->m_icon);
 
     auto vbox = dynamic_cast<Gtk::Box*>(image->get_next_sibling());
-    if (!vbox) return;
-    auto title = dynamic_cast<Gtk::Label*>(vbox->get_first_child());
-    if (!title) return;
-    title->set_text(col->m_title);
-    auto description = dynamic_cast<Gtk::Label*>(title->get_next_sibling());
-    if (!description) return;
-    description->set_text(col->m_description);
+    if (vbox) {
+        auto title = dynamic_cast<Gtk::Label*>(vbox->get_first_child());
+        if (title) title->set_text(col->m_title);
+        auto desc = dynamic_cast<Gtk::Label*>(title->get_next_sibling());
+        if (desc) desc->set_text(col->m_description);
+    }
 
-    auto connection = m_DropDown.property_selected_item().signal_changed().connect(
-        sigc::bind(sigc::mem_fun(*this, &LanguageSelector::on_selected_item_changed),
-            list_item));
-    list_item->set_data("connection", new sigc::connection(connection),
-        Glib::destroy_notify_delete<sigc::connection>);
-    on_selected_item_changed(list_item);
+    // 2. Checkmark Logic - UPDATED
+    auto checkmark = dynamic_cast<Gtk::Image*>(hbox->get_last_child());
+
+    // Lambda to decide whether to show the checkmark
+    auto update_visibility = [this, col, checkmark]() {
+        if (!checkmark) return;
+        // Compare with m_ConfirmedLocale, not the mouse selection!
+        bool is_confirmed = (col->m_description == m_ConfirmedLocale);
+        checkmark->set_visible(is_confirmed);
+    };
+
+    // Call immediately
+    update_visibility();
+
+    // Connect to our custom refresh signal
+    // (Instead of m_SelectionModel->property_selected())
+    auto conn = m_signal_refresh_ui.connect(update_visibility);
+
+    list_item->set_data("bind_connection", new sigc::connection(conn),
+        [](void* data) { delete static_cast<sigc::connection*>(data); });
 }
 
 void LanguageSelector::on_unbind_list_item(const Glib::RefPtr<Gtk::ListItem>& list_item)
 {
-    if (auto connection = static_cast<sigc::connection*>(list_item->get_data("connection")))
+    if (auto connection = static_cast<sigc::connection*>(list_item->get_data("bind_connection")))
     {
         connection->disconnect();
-        list_item->set_data("connection", nullptr);
+        list_item->set_data("bind_connection", nullptr);
     }
 }
 
-void LanguageSelector::on_selected_item_changed(const Glib::RefPtr<Gtk::ListItem>& list_item)
-{
-    auto hbox = dynamic_cast<Gtk::Box*>(list_item->get_child());
-    if (!hbox) return;
-    auto checkmark = dynamic_cast<Gtk::Image*>(hbox->get_last_child());
-    if (!checkmark) return;
-    checkmark->set_visible(m_DropDown.get_selected_item() == list_item->get_item());
-}
-
+// Zde zůstává metoda create_model() beze změny (dlouhý seznam add_item...)
 void LanguageSelector::create_model()
 {
     m_ListStore = LangListStore::create();
@@ -315,7 +360,7 @@ void LanguageSelector::create_model()
     liststore_add_item("\x4e\x65\x64\x65\x72\x6c\x61\x6e\x64\x73 / Dutch, Belgium", "/images/be.svg", "nl_BE.UTF-8");
     liststore_add_item("\x4e\x65\x64\x65\x72\x6c\x61\x6e\x64\x73 / Dutch, Netherlands", "/images/nl.svg", "nl_NL.UTF-8");
     liststore_add_item("\x4e\x79\x6e\x6f\x72\x73\x6b / Norwegian Nynorsk, Norway", "/images/no.svg", "nn_NO.UTF-8");
-    liststore_add_item("\x4e\x6f\x72\x73\x6b / Norwegian, Norway (Generic)", "/images/no.svg", "no_NO.UTF-8");
+    liststore_add_item("\x4e\x6f\x72\x73\x6b / Norwegian, Norway", "/images/no.svg", "no_NO.UTF-8");
     liststore_add_item("\x4f\x63\x63\x69\x74\x61\x6e / Occitan, France", "/images/fr.svg", "oc_FR.UTF-8");
     liststore_add_item("\x41\x66\x61\x61\x6e\x20\x4f\x72\x6f\x6d\x6f\x6f / Oromo, Kenya", "/images/ke.svg", "om_KE.UTF-8");
     liststore_add_item("\x50\x6f\x6c\x73\x6b\x69 / Polish, Poland", "/images/pl.svg", "pl_PL.UTF-8");
@@ -330,7 +375,7 @@ void LanguageSelector::create_model()
     liststore_add_item("\x53\x6f\x6f\x6d\x61\x61\x6c\x69 / Somali, Kenya", "/images/ke.svg", "so_KE.UTF-8");
     liststore_add_item("\x53\x6f\x6f\x6d\x61\x61\x6c\x69 / Somali, Somalia", "/images/so.svg", "so_SO.UTF-8");
     liststore_add_item("\x53\x68\x71\x69\x70 / Albanian, Albania", "/images/al.svg", "sq_AL.UTF-8");
-    liststore_add_item("\xd1\x81\xd1\x80\xd0\xbf\xd1\x81\xd0\xba\xd0\xb8\x20\xd1\x98\xd0\xb5\xd0\xb7\xd0\xb8\xd0\xba / Serbian, Serbia and Montenegro (Deprecated)", "/images/cs.svg", "sr_CS.UTF-8");
+    liststore_add_item("\xd1\x81\xd1\x80\xd0\xbf\xd1\x81\xd0\xba\xd0\xb8\x20\xd1\x98\xd0\xb5\xd0\xb7\xd0\xb8\xd0\xba / Serbian, Serbia and Montenegro", "/images/cs.svg", "sr_CS.UTF-8");
     liststore_add_item("\x73\x65\x53\x6f\x74\x68\x6f / Southern Sotho, South Africa", "/images/za.svg", "st_ZA.UTF-8");
     liststore_add_item("\x53\x76\x65\x6e\x73\x6b\x61 / Swedish, Finland", "/images/fi.svg", "sv_FI.UTF-8");
     liststore_add_item("\x53\x76\x65\x6e\x73\x6b\x61 / Swedish, Sweden", "/images/se.svg", "sv_SE.UTF-8");
