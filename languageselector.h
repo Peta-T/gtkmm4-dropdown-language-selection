@@ -32,37 +32,51 @@ namespace LanguageSelectorInternal
     using LangListStoreRef = Glib::RefPtr<LangListStore>;
 }
 
-
-
 class LanguageSelector : public Gtk::Box
 {
 public:
     using type_signal_language_changed = sigc::signal<void(const std::string&)>;
 
     LanguageSelector(const std::string& initial_locale = "C.UTF-8");
-    ~LanguageSelector() override = default;
+    ~LanguageSelector() override;
 
     type_signal_language_changed signal_language_changed() const;
 
     std::string get_selected_locale() const;
-           void set_selected_locale(const std::string& locale);
+    void set_selected_locale(const std::string& locale);
 
 protected:
-    void on_setup_selected_item(const Glib::RefPtr<Gtk::ListItem>& list_item);
-    void on_bind_selected_item(const Glib::RefPtr<Gtk::ListItem>& list_item);
+    // Factory methods for the ListView
     void on_setup_list_item(const Glib::RefPtr<Gtk::ListItem>& list_item);
     void on_bind_list_item(const Glib::RefPtr<Gtk::ListItem>& list_item);
     void on_unbind_list_item(const Glib::RefPtr<Gtk::ListItem>& list_item);
-    void on_selected_item_changed(const Glib::RefPtr<Gtk::ListItem>& list_item);
 
-    void on_dropdown_changed();
+    // Helper method to update the appearance of the main button
+    void update_button_content(const Glib::RefPtr<LanguageSelectorInternal::ModelColumns>& col);
 
     void create_model();
     void liststore_add_item(const Glib::ustring& title, const Glib::ustring& icon,
         const Glib::ustring& description);
 
-    Gtk::DropDown m_DropDown;
-    LanguageSelectorInternal::LangListStoreRef m_ListStore;
+    // Variable to store the actually confirmed locale
+    std::string m_ConfirmedLocale;
 
+    // Internal signal notifying rows to redraw checkmarks
+    sigc::signal<void()> m_signal_refresh_ui;
+
+    // --- New components replacing Gtk::DropDown ---
+    Gtk::Button m_Button;                 // Main button
+    Gtk::Popover m_Popover;               // Popup window
+    Gtk::ScrolledWindow m_ScrolledWindow; // Scroller inside the popover
+    Gtk::ListView m_ListView;             // The actual list view
+
+    // Selection model (SingleSelection wraps ListStore and handles the "selected row")
+    Glib::RefPtr<Gtk::SingleSelection> m_SelectionModel;
+
+    LanguageSelectorInternal::LangListStoreRef m_ListStore;
     type_signal_language_changed m_signal_language_changed;
+
+    // Widgets inside the main button (so we can modify them dynamically)
+    Gtk::Image m_ButtonImage;
+    Gtk::Label m_ButtonLabel;
 };
