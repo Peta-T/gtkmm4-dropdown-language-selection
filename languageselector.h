@@ -45,6 +45,7 @@ public:
     type_signal_language_changed signal_language_changed() const;
 
     std::string get_selected_locale() const;
+           void set_selected_locale(const std::string& locale);
 
 protected:
     void on_setup_selected_item(const Glib::RefPtr<Gtk::ListItem>& list_item);
